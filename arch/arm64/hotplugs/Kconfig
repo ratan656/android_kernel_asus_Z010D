@@ -1,0 +1,5 @@
+config MSM_HOTPLUG
+    bool "MSM Hotplug"
+    default y
+    help
+	Msm Hotplug: A custom hotplug by neobuddy

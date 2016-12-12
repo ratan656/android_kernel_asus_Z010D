@@ -44,14 +44,10 @@ case "$soc_id" in
 
         # Disable thermal core_control to update scaling_min_freq
         echo 0 > /sys/module/msm_thermal/core_control/enabled
-
-        # Enable Thermal Temp Limit
         echo Y > /sys/module/msm_thermal/parameters/enabled
 
         # Disable Touchboost
         echo 0 > /sys/module/msm_performance/parameters/touchboost
-
-        # Enable io sched
 	echo "zen" > /sys/block/mmcblk0/queue/scheduler
 
         # Enable governor

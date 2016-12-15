@@ -1,1 +1,1 @@
-obj-y += msm_hotplug.o
+obj-y += thunderplug_quad.o

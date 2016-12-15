@@ -274,7 +274,6 @@ static LIST_HEAD(bam_other_notify_funcs);
 static DEFINE_MUTEX(smsm_cb_lock);
 static DEFINE_MUTEX(delayed_ul_vote_lock);
 static int need_delayed_ul_vote;
-static int in_ssr;
 static int ssr_skipped_disconnect;
 static struct completion shutdown_completion;
 
@@ -706,7 +705,8 @@ static void handle_bam_mux_cmd(struct work_struct *work)
 	switch (rx_hdr->cmd) {
 	case BAM_MUX_HDR_CMD_DATA:
 		if (rx_hdr->pkt_len == 0xffff)
-			rx_hdr->pkt_len = sps_size;
+			/* SPS includes the header bytes, need just payload */
+			rx_hdr->pkt_len = sps_size - sizeof(*rx_hdr);
 		DBG_INC_READ_CNT(rx_hdr->pkt_len);
 		bam_mux_process_data(rx_skb);
 		break;
@@ -1982,8 +1982,11 @@ static void reconnect_to_bam(void)
 {
 	int i;
 
-	in_global_reset = 0;
-	in_ssr = 0;
+	if (in_global_reset) {
+		BAM_DMUX_LOG("%s: skipping due to SSR\n", __func__);
+		return;
+	}
+
 	vote_dfab();
 
 	if (ssr_skipped_disconnect) {
@@ -2059,8 +2062,8 @@ static void disconnect_to_bam(void)
 	/* tear down BAM connection */
 	INIT_COMPLETION(bam_connection_completion);
 
-	/* in_ssr documentation/assumptions found in restart_notifier_cb */
-	if (likely(!in_ssr)) {
+	/* documentation/assumptions found in restart_notifier_cb */
+	if (likely(!in_global_reset)) {
 		BAM_DMUX_LOG("%s: disconnect tx\n", __func__);
 		bam_ops->sps_disconnect_ptr(bam_tx_pipe);
 		BAM_DMUX_LOG("%s: disconnect rx\n", __func__);
@@ -2194,12 +2197,13 @@ static int restart_notifier_cb(struct notifier_block *this,
 	if (code == SUBSYS_BEFORE_SHUTDOWN) {
 		BAM_DMUX_LOG("%s: begin\n", __func__);
 		in_global_reset = 1;
-		in_ssr = 1;
-		/* wait till all bam_dmux writes completes */
+		/* sync to ensure the driver sees SSR */
 		synchronize_srcu(&bam_dmux_srcu);
 		BAM_DMUX_LOG("%s: ssr signaling complete\n", __func__);
 		flush_workqueue(bam_mux_rx_workqueue);
 	}
+	if (code == SUBSYS_BEFORE_POWERUP)
+		in_global_reset = 0;
 	if (code != SUBSYS_AFTER_SHUTDOWN)
 		return NOTIFY_DONE;
 
@@ -2273,7 +2277,6 @@ static int bam_init(void)
 	int skip_iounmap = 0;
 
 	in_global_reset = 0;
-	in_ssr = 0;
 	vote_dfab();
 	/* init BAM */
 	a2_virt_addr = ioremap_nocache(a2_phys_base, a2_phys_size);
@@ -2463,7 +2466,9 @@ static void toggle_apps_ack(void)
 static void bam_dmux_smsm_cb(void *priv, uint32_t old_state, uint32_t new_state)
 {
 	static int last_processed_state;
+	int rcu_id;
 
+	rcu_id = srcu_read_lock(&bam_dmux_srcu);
 	mutex_lock(&smsm_cb_lock);
 	bam_dmux_power_state = new_state & SMSM_A2_POWER_CONTROL ? 1 : 0;
 	DBG_INC_A2_POWER_CONTROL_IN_CNT();
@@ -2472,6 +2477,7 @@ static void bam_dmux_smsm_cb(void *priv, uint32_t old_state, uint32_t new_state)
 	if (last_processed_state == (new_state & SMSM_A2_POWER_CONTROL)) {
 		BAM_DMUX_LOG("%s: already processed this state\n", __func__);
 		mutex_unlock(&smsm_cb_lock);
+		srcu_read_unlock(&bam_dmux_srcu, rcu_id);
 		return;
 	}
 
@@ -2495,16 +2501,20 @@ static void bam_dmux_smsm_cb(void *priv, uint32_t old_state, uint32_t new_state)
 		pr_err("%s: unsupported state change\n", __func__);
 	}
 	mutex_unlock(&smsm_cb_lock);
-
+	srcu_read_unlock(&bam_dmux_srcu, rcu_id);
 }
 
 static void bam_dmux_smsm_ack_cb(void *priv, uint32_t old_state,
 						uint32_t new_state)
 {
+	int rcu_id;
+
+	rcu_id = srcu_read_lock(&bam_dmux_srcu);
 	DBG_INC_ACK_IN_CNT();
 	BAM_DMUX_LOG("%s: 0x%08x -> 0x%08x\n", __func__, old_state,
 			new_state);
 	complete_all(&ul_wakeup_ack_completion);
+	srcu_read_unlock(&bam_dmux_srcu, rcu_id);
 }
 
 /**
@@ -2533,8 +2543,9 @@ void msm_bam_dmux_deinit(void)
 {
 	restart_notifier_cb(NULL, SUBSYS_BEFORE_SHUTDOWN, NULL);
 	restart_notifier_cb(NULL, SUBSYS_AFTER_SHUTDOWN, NULL);
+	restart_notifier_cb(NULL, SUBSYS_BEFORE_POWERUP, NULL);
+	restart_notifier_cb(NULL, SUBSYS_AFTER_POWERUP, NULL);
 	in_global_reset = 0;
-	in_ssr = 0;
 }
 EXPORT_SYMBOL(msm_bam_dmux_deinit);
 

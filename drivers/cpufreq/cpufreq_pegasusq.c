@@ -39,7 +39,7 @@
 #define DEF_SAMPLING_DOWN_FACTOR		(1)
 #define MAX_SAMPLING_DOWN_FACTOR		(3)
 #define DEF_FREQUENCY_DOWN_DIFFERENTIAL		(10)
-#define DEF_FREQUENCY_UP_THRESHOLD		(70)
+#define DEF_FREQUENCY_UP_THRESHOLD		(80)
 
 /* for multiple freq_step */
 #define DEF_UP_THRESHOLD_DIFF			(5)
@@ -56,9 +56,9 @@
 
 #define DEF_START_DELAY				(0)
 
-#define UP_THRESHOLD_AT_MIN_FREQ		(40)
+#define UP_THRESHOLD_AT_MIN_FREQ		(60)
 /* for fast decrease */
-#define UP_THRESHOLD_AT_FAST_DOWN		(80)
+#define UP_THRESHOLD_AT_FAST_DOWN		(70)
 
 static unsigned int min_sampling_rate;
 

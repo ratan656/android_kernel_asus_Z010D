@@ -57,7 +57,7 @@
  * lowering the frequency towards the ideal frequency is faster than below it.
  */
 
-#define GOV_IDLE_FREQ 200000
+#define GOV_IDLE_FREQ 533333
 
 #define DEFAULT_SUSPEND_IDEAL_FREQ GOV_IDLE_FREQ
 static unsigned int suspend_ideal_freq;
@@ -115,8 +115,8 @@ static unsigned int sampling_rate;
 #define DEFAULT_INPUT_BOOST_DURATION 50000000
 static unsigned int input_boost_duration;
 
-static unsigned int touch_poke_freq = 533333;
-static bool touch_poke = false;
+static unsigned int touch_poke_freq = 800000;
+static bool touch_poke = true;
 
 /*
  * should ramp_up steps during boost be possible
@@ -127,7 +127,7 @@ static bool ramp_up_during_boost = true;
  * external boost interface - boost if duration is written
  * to sysfs for boost_duration
  */
-static unsigned int boost_freq = 800000;
+static unsigned int boost_freq = 998000;
 static bool boost = false;
 
 /* in nsecs */

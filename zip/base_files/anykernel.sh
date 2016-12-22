@@ -3,7 +3,7 @@
 
 ## AnyKernel setup
 # EDIFY properties
-kernel.string=Reaper Kernel @ShadowReaper1
+kernel.string=Kernel @XdaDevelopers
 do.devicecheck=0
 
 do.initd=0

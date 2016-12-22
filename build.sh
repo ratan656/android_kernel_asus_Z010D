@@ -7,11 +7,14 @@
 set -e
 
 KERNEL_DIR=$PWD
+#change this to your toolchain
 TOOLCHAINDIR=~/UBERTC
+#change this to your toolchain directory
 KERNEL_TOOLCHAIN=$TOOLCHAINDIR/bin/aarch64-linux-android-
 KERNEL_DEFCONFIG=zc550kl-custom_defconfig
 DTBTOOL=$KERNEL_DIR/tools/
 BUILDS=../zip
+#change this according to your cpu coresX2 example if you have 4 cores change this to 8
 JOBS=4
 BUILD_DIR=$KERNEL_DIR/zip
 ANY_KERNEL2_DIR=$KERNEL_DIR/zip/base_files
@@ -77,7 +80,7 @@ echo "**** Setting Build Number ****"
 NUMBER=$(cat number)
 INCREMENT=$(expr $NUMBER + 1)
 sed -i s/$NUMBER/$INCREMENT/g $KERNEL_DIR/number
-FINAL_KERNEL_ZIP=Reaper-Darkness-V$INCREMENT.0.zip
+FINAL_KERNEL_ZIP=Kernel-V$INCREMENT.0.zip
 
 echo "**** Time to zip up! ****"
 cd $ANY_KERNEL2_DIR/
